@@ -160,9 +160,9 @@ fi
 DMG_OS_VERS=$(/usr/libexec/PlistBuddy -c 'Print :ProductVersion' "$MNT_ESD/System/Library/CoreServices/SystemVersion.plist")
 DMG_OS_VERS_MAJOR=$(echo $DMG_OS_VERS | awk -F "." '{print $2}')
 DMG_OS_BUILD=$(/usr/libexec/PlistBuddy -c 'Print :ProductBuildVersion' "$MNT_ESD/System/Library/CoreServices/SystemVersion.plist")
-OUTPUT_DMG="$OUT_DIR/OSX_InstallESD_${DMG_OS_VERS}_${DMG_OS_BUILD}.dmg"
-if [ -e "$OUTPUT_DMG" ]; then
-	msg_error "Output file $OUTPUT_DMG already exists! We're not going to overwrite it, exiting.."
+OUTPUT_ISO="$OUT_DIR/OSX_InstallESD_${DMG_OS_VERS}_${DMG_OS_BUILD}.iso"
+if [ -e "$OUTPUT_ISO" ]; then
+	msg_error "Output file $OUTPUT_ISO already exists! We're not going to overwrite it, exiting.."
 	hdiutil detach "$MNT_ESD"
 	if [ -n "$TOPLVL_MNT_ESD" ]; then
 		hdiutil detach "$TOPLVL_MNT_ESD"
@@ -303,7 +303,11 @@ msg_status "Unmounting.."
 hdiutil detach "$MNT_ESD"
 
 msg_status "Converting to final output file.."
-hdiutil convert -format UDZO -o "$OUTPUT_DMG" -shadow "$ESD.shadow" "$ESD"
+hdiutil convert -format UDTO -o "$OUTPUT_ISO" -shadow "$ESD.shadow" "$ESD"
+if [ -e "${OUTPUT_ISO}.cdr" ]; then
+	# For DVD/CD-R master format, hdiutil uses .cdr suffix.  Change back to .iso
+	mv "${OUTPUT_ISO}.cdr" "$OUTPUT_ISO"
+fi
 if [ -z "$TOPLVL_ESD" ]; then
 	rm "$ESD.shadow"
 	rm -rf "$MNT_ESD"
@@ -316,13 +320,13 @@ fi
 
 msg_status "Fixing permissions.."
 chown -R $VEEWEE_UID:$VEEWEE_GID \
-	"$OUTPUT_DMG" \
+	"$OUTPUT_ISO" \
 	"$SUPPORT_DIR/AutoPartition-10.${DMG_OS_VERS_MAJOR}"
 
 if [ -n "$DEFAULT_ISO_DIR" ]; then
 	DEFINITION_FILE="$DEFINITION_DIR/definition.rb"
 	msg_status "Setting ISO file in definition "$DEFINITION_FILE".."
-	ISO_FILE=$(basename "$OUTPUT_DMG")
+	ISO_FILE=$(basename "$OUTPUT_ISO")
 	# Explicitly use -e in order to use double quotes around sed command
 	sed -i -e "s/%OSX_ISO%/${ISO_FILE}/" "$DEFINITION_FILE"
 fi
